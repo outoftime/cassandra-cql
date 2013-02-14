@@ -21,7 +21,7 @@ module CassandraCQL
 
   class Database
     attr_reader :connection, :schema, :keyspace
-  
+
     def initialize(servers, options={}, thrift_client_options={})
       @options = {
         :keyspace => 'system'
@@ -37,6 +37,12 @@ module CassandraCQL
       @use_cql3_query =
         (@cql_version.nil? || @cql_version.split('.').first.to_i >= 3) &&
         CassandraCQL::Thrift::Client.method_defined?(:execute_cql3_query)
+
+      if @use_cql3_query
+        @cql3_consistency_level =
+          @options[:consistency_level] || CassandraCQL::Thrift::ConsistencyLevel::QUORUM
+      end
+
       @servers = servers
       connect!
       execute("USE #{@keyspace}")
@@ -58,7 +64,7 @@ module CassandraCQL
 
     def active?
       # TODO: This should be replaced with a CQL call that doesn't exist yet
-      @connection.describe_version 
+      @connection.describe_version
       true
     rescue Exception
       false
@@ -100,23 +106,23 @@ module CassandraCQL
 
     def execute_cql_query(cql, compression=CassandraCQL::Thrift::Compression::NONE)
       if @use_cql3_query
-        @connection.execute_cql3_query(cql, compression, CassandraCQL::Thrift::ConsistencyLevel::QUORUM) #TODO consistency level
+        @connection.execute_cql3_query(cql, compression, @cql3_consistency_level) #TODO consistency level
       else
         @connection.execute_cql_query(cql, compression)
       end
     rescue CassandraCQL::Thrift::InvalidRequestException
       raise Error::InvalidRequestException.new($!.why)
     end
-    
+
     def keyspace=(ks)
       @keyspace = (ks.nil? ? nil : ks.to_s)
     end
-  
+
     def keyspaces
       # TODO: This should be replaced with a CQL call that doesn't exist yet
       @connection.describe_keyspaces.map { |keyspace| Schema.new(keyspace) }
     end
-    
+
     def schema
       # TODO: This should be replaced with a CQL call that doesn't exist yet
       Schema.new(@connection.describe_keyspace(@keyspace))
