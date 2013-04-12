@@ -39,9 +39,7 @@ module CassandraCQL
         CassandraCQL::Thrift::Client.method_defined?(:execute_cql3_query)
 
       if @use_cql3_query
-        @cql3_consistency_level =
-          @options.fetch(:consistency_level,
-                         CassandraCQL::Thrift::ConsistencyLevel::QUORUM)
+        self.consistency = @options.fetch(:consistency, :quorum)
       end
 
       @servers = servers
@@ -123,7 +121,7 @@ module CassandraCQL
 
     def execute_cql_query(cql, compression=CassandraCQL::Thrift::Compression::NONE)
       if use_cql3_query?
-        @connection.execute_cql3_query(cql, compression, @cql3_consistency_level) #TODO consistency level
+        @connection.execute_cql3_query(cql, compression, consistency)
       else
         @connection.execute_cql_query(cql, compression)
       end
@@ -153,6 +151,27 @@ module CassandraCQL
       # @auth_request after the first successful login.
       @auth_request = request
       ret
+    end
+
+    def consistency
+      @consistency ||= get_consistency(:quorum)
+    end
+
+    def consistency=(level)
+      @consistency_name = level
+      @consistency = get_consistency(level)
+    end
+
+    private
+
+    def get_consistency(level)
+      level_const = level.to_s.upcase
+
+      if CassandraCQL::Thrift::ConsistencyLevel.const_defined?(level_const)
+        CassandraCQL::Thrift::ConsistencyLevel.const_get(level_const)
+      else
+        raise ArgumentError.new("Invalid consistency level")
+      end
     end
   end
 end
