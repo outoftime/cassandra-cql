@@ -153,6 +153,13 @@ module CassandraCQL
       ret
     end
 
+    def with_consistency(level)
+      previous_level = @consistency_name
+      self.consistency = level
+      yield
+      self.consistency = previous_level
+    end
+
     def consistency
       @consistency ||= get_consistency(:quorum)
     end
