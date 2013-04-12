@@ -34,6 +34,14 @@ describe "Database" do
         @connection.consistency.should == CassandraCQL::Thrift::ConsistencyLevel::ALL
       end
 
+      it "should change the consistency within a block" do
+        @connection.with_consistency(:one) do
+          @connection.consistency.should == CassandraCQL::Thrift::ConsistencyLevel::ONE
+        end
+
+        @connection.consistency.should == CassandraCQL::Thrift::ConsistencyLevel::QUORUM
+      end
+
       it "should raise and error if invalid consistency is used" do
         expect { @connection.consistency = :foo }.to raise_error(ArgumentError)
       end
